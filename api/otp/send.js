@@ -1,25 +1,14 @@
-/**
- * Serverless OTP Request Handler
- * Safe, silent authentication endpoint. Does NOT send external SMS or spam.
- */
-export default async function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+import { createServerlessHandler } from "../_adapter.js";
 
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
+export default createServerlessHandler(async ({ method, body }) => {
+  if (method !== "POST") {
+    return { status: 405, data: { error: "Method not allowed" } };
   }
 
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
-
-  const { phone } = req.body || {};
+  const { phone } = body || {};
   if (!/^\d{10}$/.test(phone || "")) {
-    return res.status(400).json({ error: "Enter a valid 10-digit mobile number" });
+    return { status: 400, data: { error: "Enter a valid 10-digit mobile number" } };
   }
 
-  // Silent authentication: no external SMS gateway triggered
-  return res.status(200).json({ ok: true });
-}
+  return { status: 200, data: { ok: true } };
+});

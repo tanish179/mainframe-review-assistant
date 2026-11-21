@@ -1,26 +1,14 @@
-/**
- * Serverless Owner Dashboard Data Endpoint
- * Returns executive metrics, review drafts, and feedback records.
- */
-export default async function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+import { createServerlessHandler } from "./_adapter.js";
 
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
+export default createServerlessHandler(async ({ method, authHeader }) => {
+  if (method !== "GET") {
+    return { status: 405, data: { error: "Method not allowed" } };
   }
 
-  if (req.method !== "GET") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
-
-  const authHeader = req.headers.authorization || "";
   if (!authHeader.startsWith("Bearer mf-")) {
-    return res.status(401).json({ error: "Unauthorized access" });
+    return { status: 401, data: { error: "Unauthorized access" } };
   }
 
-  // Production-ready data payload
   const fallbackReviews = [
     {
       text: "Quick SSD upgrade and thermal paste service done in under 45 minutes. System is running much cooler and faster now.",
@@ -61,8 +49,11 @@ export default async function handler(req, res) {
     },
   ];
 
-  return res.status(200).json({
-    reviews: fallbackReviews,
-    feedback: fallbackFeedback,
-  });
-}
+  return {
+    status: 200,
+    data: {
+      reviews: fallbackReviews,
+      feedback: fallbackFeedback,
+    },
+  };
+});

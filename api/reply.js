@@ -1,21 +1,14 @@
+import { createServerlessHandler } from "./_adapter.js";
 import { queryAI } from "./_ai.js";
 
-export default async function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
-
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
+export default createServerlessHandler(async ({ method, body }) => {
+  if (method !== "POST") {
+    return { status: 405, data: { error: "Method not allowed" } };
   }
 
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
-
-  const { review } = req.body || {};
+  const { review } = body || {};
   if (!review) {
-    return res.status(400).json({ error: "Review text is required" });
+    return { status: 400, data: { error: "Review text is required" } };
   }
 
   const prompt = `Write a warm, professional owner reply as Mainframe Computers to this customer review. Thank them, reference something specific they mentioned, under 2 complete sentences. Always finish the sentence completely. If negative: apologize sincerely, offer a free re-check, invite them back. Output ONLY the reply.
@@ -53,8 +46,8 @@ Review: "${review}"`;
       reply = pool[Math.floor(Math.random() * pool.length)];
     }
 
-    return res.status(200).json({ reply });
+    return { status: 200, data: { reply } };
   } catch (e) {
-    return res.status(500).json({ error: "Failed to generate reply" });
+    return { status: 500, data: { error: "Failed to generate reply" } };
   }
-}
+});
