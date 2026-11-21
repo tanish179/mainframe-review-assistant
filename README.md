@@ -29,7 +29,7 @@ flowchart TD
     Step5 --> Google["📍 1-Tap Copy & Deep Link to Google Maps Review Dialog"]
     
     NegativeTrack --> Step6["Screen 6: Private Resolution Form"]
-    Step6 --> SilentLog["🔒 Silent Owner Dashboard Log (Zero public damage)"]
+    Step6 --> SilentLog["🔒 Silent Private Feedback Log (Zero public damage)"]
 ```
 
 ---
@@ -70,7 +70,7 @@ Built-in desktop tool for counter signage:
 
 - **Frontend**: React 18, Vite, React Router 6, Lucide Icons, Canvas Confetti.
 - **Styling**: Pure CSS Design Tokens (`tokens.css`, `base.css`, `styles.css`) with OKLCH color math.
-- **Serverless Runtime**: Node.js ESM Edge/Lambda handlers (`/api/generate`, `/api/reply`, `/api/feedback`, `/api/dashboard`, `/api/otp/*`).
+- **Serverless Runtime**: Node.js ESM Edge/Lambda handlers (`/api/generate`, `/api/feedback`).
 - **AI Engines**: `@google/generative-ai` (Gemini 2.5 Flash) + OpenRouter REST API.
 - **Linting & Quality**: Hallmark Sloplint (0 Fail, 0 Reflex, 0 Warn).
 
@@ -80,18 +80,14 @@ Built-in desktop tool for counter signage:
 
 ```
 ├── api/                       # Stateless Serverless Functions
+│   ├── _adapter.js            # Universal Edge/Lambda adapter
 │   ├── _ai.js                 # Unified Gemini + OpenRouter failover dispatcher
 │   ├── generate.js            # Local SEO review generator
-│   ├── reply.js               # AI owner response drafter
-│   ├── feedback.js            # Silent private customer recovery
-│   ├── dashboard.js           # Executive analytics & feedback logs
-│   ├── otp-send.js            # Authentication dispatch
-│   └── otp-verify.js          # Session token validation
+│   └── feedback.js            # Silent private customer recovery
 ├── public/                    # Logos, branding assets & QR graphics
 ├── src/
 │   ├── pages/
-│   │   ├── Customer.jsx       # 6-step mobile-first customer journey
-│   │   └── Dashboard.jsx      # Desktop business intelligence & standee generator
+│   │   └── Customer.jsx       # 6-step mobile-first customer journey
 │   ├── tokens.css             # OKLCH color system & 4px spacing scale
 │   ├── base.css               # Reset & accessible interactive foundations
 │   ├── styles.css             # Hallmark-certified Swiss editorial layout

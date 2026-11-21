@@ -156,61 +156,6 @@ app.post("/api/feedback", (req, res) => {
   res.json({ ok: true });
 });
 
-app.post("/api/reply", async (req, res) => {
-  const { review } = req.body;
-  const prompt = `Write a warm, professional owner reply as Mainframe Computers to this customer review. Thank them, reference something specific they mentioned, under 2 complete sentences. Always finish the sentence completely. If negative: apologize sincerely, offer a free re-check, invite them back. Output ONLY the reply.
-
-Review: "${review}"`;
-  try {
-    let reply = "";
-    try {
-      reply = await queryAI(prompt);
-    } catch (apiErr) {
-      console.warn("AI Reply API call failed, falling back to smart template:", apiErr.message);
-      reply = null;
-    }
-
-    if (!reply) {
-      const neg = /bad|poor|worst|disappoint|slow|broken|issue|problem|refund|not happy|angry/i.test(review);
-      const mentions = review.match(/screen|battery|keyboard|charger|data|virus|speed|repair|upgrade|laptop|desktop|parts|pricing|price|service/i);
-      const noun = mentions ? mentions[0].toLowerCase() : "your device";
-      const pos = [
-        `Thank you for the kind words — glad the ${noun} work came together well. We appreciate you choosing Mainframe!`,
-        `Thanks a lot for sharing this! Happy the ${noun} was sorted quickly. See you next time at Mainframe.`,
-        `We really appreciate the positive feedback, and glad we could help with the ${noun}. Thank you for trusting Mainframe!`,
-        `Thank you so much! It means a lot to hear that about our ${noun} service. Do visit us again!`,
-      ];
-      const negT = [
-        `We're sorry to hear this about the ${noun}. Please bring the device back for a free re-check — we'd love to make it right.`,
-        `Apologies for the trouble with the ${noun}. Do visit us again; we'll re-check it free of charge and sort it out.`,
-        `Really sorry we missed the mark on the ${noun}. Bring it in anytime for a free inspection so we can fix it properly.`,
-      ];
-      const pool = neg ? negT : pos;
-      reply = pool[Math.floor(Math.random() * pool.length)];
-    }
-    res.json({ reply });
-  } catch { res.status(500).json({ error: "AI failed" }); }
-});
-
-app.post("/api/otp/send", (req, res) => {
-  const { phone } = req.body;
-  if (!/^\d{10}$/.test(phone || "")) return res.status(400).json({ error: "Enter a valid 10-digit number" });
-  store.otps[phone] = "123456"; // TODO: wire Twilio/MSG91 for real SMS
-  save();
-  console.log(`OTP for ${phone}: 123456`);
-  res.json({ ok: true });
-});
-
-app.post("/api/otp/verify", (req, res) => {
-  if (store.otps[req.body.phone] === req.body.otp) return res.json({ token: "mf-" + Math.random().toString(36).slice(2) });
-  res.status(400).json({ error: "Wrong OTP" });
-});
-
-app.get("/api/dashboard", (req, res) => {
-  if (!String(req.headers.authorization || "").startsWith("Bearer mf-")) return res.status(401).json({ error: "Unauthorized" });
-  res.json({ feedback: store.feedback, reviews: store.reviews });
-});
-
 app.get("/review", (req, res) => {
   res.redirect("https://search.google.com/local/writereview?placeid=ChIJ7bbz-CwBwTsReJz4vKgjBtY");
 });

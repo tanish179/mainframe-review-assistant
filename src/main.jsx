@@ -2,7 +2,6 @@ import React from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Customer from "./pages/Customer.jsx";
-import Dashboard from "./pages/Dashboard.jsx";
 import "./styles.css";
 
 function RedirectToGoogle() {
@@ -20,7 +19,6 @@ createRoot(document.getElementById("root")).render(
   <BrowserRouter>
     <Routes>
       <Route path="/review" element={<RedirectToGoogle />} />
-      <Route path="/owner/dashboard" element={<Dashboard />} />
       <Route path="/:counter?" element={<Customer />} />
     </Routes>
   </BrowserRouter>
