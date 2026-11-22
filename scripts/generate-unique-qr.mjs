@@ -1,87 +1,78 @@
 import fs from "fs";
 import QRCode from "qrcode";
 import sharp from "sharp";
+import jsQR from "jsqr";
 
-const URL = "https://mainframecomputers.netlify.app/";
+const TARGET_URL = "https://mainframe-review-assistant.netlify.app";
 
 function isFinderPattern(x, y, size) {
-  // Top-Left (7x7)
   if (x < 7 && y < 7) return true;
-  // Top-Right (7x7)
   if (x >= size - 7 && y < 7) return true;
-  // Bottom-Left (7x7)
   if (x < 7 && y >= size - 7) return true;
   return false;
 }
 
-function isCenterArea(x, y, size) {
-  // Reserve 9x9 modules in the center for the brand badge
-  const centerStart = Math.floor(size / 2) - 4;
-  const centerEnd = Math.floor(size / 2) + 4;
-  return x >= centerStart && x <= centerEnd && y >= centerStart && y <= centerEnd;
-}
+function buildQRInnerElements(qr, size, moduleSize, padding) {
+  const elements = [];
+  const badgeModules = 7;
+  const centerStart = Math.floor((size - badgeModules) / 2);
+  const centerEnd = centerStart + badgeModules;
 
-function buildQRInnerElements(size, moduleSize, padding) {
-  const qr = QRCode.create(URL, { errorCorrectionLevel: "H" });
-  let elements = [];
-
-  // Data modules
+  // 1. Data modules with smooth rounded squircle geometry
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
       if (isFinderPattern(x, y, size)) continue;
-      if (isCenterArea(x, y, size)) continue;
+      // Reserve center area for clean badge
+      if (x >= centerStart && x < centerEnd && y >= centerStart && y < centerEnd) continue;
 
       if (qr.modules.get(x, y)) {
         const px = padding + x * moduleSize;
         const py = padding + y * moduleSize;
-        // Rounded module (squircle effect)
         elements.push(
-          `<rect x="${px + 1.5}" y="${py + 1.5}" width="${moduleSize - 3}" height="${moduleSize - 3}" rx="4" fill="#0F172A"/>`
+          `<rect x="${px + 1}" y="${py + 1}" width="${moduleSize - 2}" height="${moduleSize - 2}" rx="5" fill="#0F172A"/>`
         );
       }
     }
   }
 
-  // Finder eyes helper
+  // 2. High-precision Finder Eyes (Cobalt blue architectural rings)
   const renderEye = (startX, startY) => {
     const px = padding + startX * moduleSize;
     const py = padding + startY * moduleSize;
-    const eyeSize = 7 * moduleSize;
-    const innerSize = 3 * moduleSize;
-    const innerOffset = 2 * moduleSize;
+    const outerDim = 7 * moduleSize;
+    const midDim = 5 * moduleSize;
+    const innerDim = 3 * moduleSize;
 
     return `
       <g>
         <!-- Outer Cobalt Ring -->
-        <rect x="${px}" y="${py}" width="${eyeSize}" height="${eyeSize}" rx="18" fill="none" stroke="#0052FF" stroke-width="10"/>
-        <!-- Inner Mask -->
-        <rect x="${px + 10}" y="${py + 10}" width="${eyeSize - 20}" height="${eyeSize - 20}" rx="11" fill="#FFFFFF"/>
-        <!-- Solid Center Dot -->
-        <rect x="${px + innerOffset}" y="${py + innerOffset}" width="${innerSize}" height="${innerSize}" rx="8" fill="#0052FF"/>
+        <rect x="${px}" y="${py}" width="${outerDim}" height="${outerDim}" rx="14" fill="#0052FF"/>
+        <!-- Clean Masking Core -->
+        <rect x="${px + moduleSize}" y="${py + moduleSize}" width="${midDim}" height="${midDim}" rx="10" fill="#FFFFFF"/>
+        <!-- Inner Center Dot -->
+        <rect x="${px + 2 * moduleSize}" y="${py + 2 * moduleSize}" width="${innerDim}" height="${innerDim}" rx="6" fill="#0052FF"/>
       </g>
     `;
   };
 
-  elements.push(renderEye(0, 0)); // Top-Left
-  elements.push(renderEye(size - 7, 0)); // Top-Right
-  elements.push(renderEye(0, size - 7)); // Bottom-Left
+  elements.push(renderEye(0, 0));
+  elements.push(renderEye(size - 7, 0));
+  elements.push(renderEye(0, size - 7));
 
-  // Center Emblem
-  const centerPixels = 9 * moduleSize;
-  const centerStartX = padding + Math.floor((size - 9) / 2) * moduleSize;
-  const centerStartY = padding + Math.floor((size - 9) / 2) * moduleSize;
+  // 3. Center Brand Emblem (MF Tech Circuit Badge)
+  const bPx = padding + centerStart * moduleSize;
+  const bDim = badgeModules * moduleSize;
 
   elements.push(`
-    <g transform="translate(${centerStartX}, ${centerStartY})">
-      <!-- White Quiet Zone Circle -->
-      <rect x="-4" y="-4" width="${centerPixels + 8}" height="${centerPixels + 8}" rx="24" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="2"/>
-      <!-- Inner Electric Blue Badge -->
-      <rect x="8" y="8" width="${centerPixels - 16}" height="${centerPixels - 16}" rx="18" fill="#0052FF"/>
+    <g>
+      <!-- Base Shield -->
+      <rect x="${bPx}" y="${bPx}" width="${bDim}" height="${bDim}" rx="14" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="2"/>
+      <rect x="${bPx + 6}" y="${bPx + 6}" width="${bDim - 12}" height="${bDim - 12}" rx="10" fill="#0052FF"/>
       
-      <!-- Tech Circuit "M" Logo -->
-      <g fill="#FFFFFF" transform="translate(${centerPixels / 2 - 28}, ${centerPixels / 2 - 24})">
-        <path d="M 6 42 V 12 L 28 32 L 50 12 V 42 H 40 V 26 L 28 37 L 16 26 V 42 H 6 Z"/>
-        <circle cx="28" cy="6" r="3.5" fill="#FFFFFF"/>
+      <!-- Tech Circuit "M" -->
+      <g fill="#FFFFFF" transform="translate(${bPx + bDim / 2 - 22}, ${bPx + bDim / 2 - 18})">
+        <path d="M 4 34 V 10 L 22 26 L 40 10 V 34 H 32 V 20 L 22 29 L 12 20 V 34 H 4 Z"/>
+        <circle cx="22" cy="5" r="3" fill="#FFFFFF"/>
       </g>
     </g>
   `);
@@ -89,52 +80,57 @@ function buildQRInnerElements(size, moduleSize, padding) {
   return elements.join("\n");
 }
 
-async function run() {
-  const qr = QRCode.create(URL, { errorCorrectionLevel: "H" });
-  const size = qr.modules.size; // 37
+async function generate() {
+  const qr = QRCode.create(TARGET_URL, { errorCorrectionLevel: "H" });
+  const size = qr.modules.size;
   const moduleSize = 22;
-  const padding = 66;
-  const totalDim = size * moduleSize + padding * 2; // 37 * 22 + 132 = 946
+  const padding = moduleSize * 3; // generous quiet zone
+  const totalDim = size * moduleSize + padding * 2;
 
-  // 1. STANDALONE STYLED QR CODE
-  const cornerLen = 30;
-  const cornerOffset = 24;
-  const w = totalDim;
-  const h = totalDim;
+  const cornerLen = 28;
+  const cornerOffset = 18;
 
+  // 1. Standalone Designer QR SVG
   const styledQRSvg = `
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${totalDim} ${totalDim}" width="${totalDim}" height="${totalDim}">
   <defs>
-    <linearGradient id="cardBg" x1="0%" y1="0%" x2="0%" y2="100%">
+    <linearGradient id="cardGrad" x1="0%" y1="0%" x2="0%" y2="100%">
       <stop offset="0%" stop-color="#FFFFFF"/>
       <stop offset="100%" stop-color="#F8FAFC"/>
     </linearGradient>
   </defs>
 
-  <!-- Clean Base Surface -->
-  <rect width="${w}" height="${h}" rx="32" fill="url(#cardBg)" stroke="#E2E8F0" stroke-width="2"/>
+  <!-- Clean Ceramic Plate -->
+  <rect width="${totalDim}" height="${totalDim}" rx="28" fill="url(#cardGrad)" stroke="#E2E8F0" stroke-width="2"/>
 
-  <!-- Technical Corner Registration Brackets -->
+  <!-- Technical Corner Registration Guides -->
   <g stroke="#94A3B8" stroke-width="3" stroke-linecap="round">
     <path d="M ${cornerOffset} ${cornerOffset + cornerLen} V ${cornerOffset} H ${cornerOffset + cornerLen}"/>
-    <path d="M ${w - cornerOffset - cornerLen} ${cornerOffset} H ${w - cornerOffset} V ${cornerOffset + cornerLen}"/>
-    <path d="M ${cornerOffset} ${h - cornerOffset - cornerLen} V ${h - cornerOffset} H ${cornerOffset + cornerLen}"/>
-    <path d="M ${w - cornerOffset - cornerLen} ${h - cornerOffset} H ${w - cornerOffset} V ${h - cornerOffset - cornerLen}"/>
+    <path d="M ${totalDim - cornerOffset - cornerLen} ${cornerOffset} H ${totalDim - cornerOffset} V ${cornerOffset + cornerLen}"/>
+    <path d="M ${cornerOffset} ${totalDim - cornerOffset - cornerLen} V ${totalDim - cornerOffset} H ${cornerOffset + cornerLen}"/>
+    <path d="M ${totalDim - cornerOffset - cornerLen} ${totalDim - cornerOffset} H ${totalDim - cornerOffset} V ${totalDim - cornerOffset - cornerLen}"/>
   </g>
 
-  <!-- QR Modules & Eyes -->
-  ${buildQRInnerElements(size, moduleSize, padding)}
+  ${buildQRInnerElements(qr, size, moduleSize, padding)}
 </svg>
   `.trim();
 
   fs.writeFileSync("public/mainframe-qr-styled.svg", styledQRSvg);
-  await sharp(Buffer.from(styledQRSvg)).png().toFile("public/mainframe-qr-styled.png");
-  console.log("✓ Created public/mainframe-qr-styled.svg & .png (946x946)");
+  const qrPngBuffer = await sharp(Buffer.from(styledQRSvg)).png().toBuffer();
+  fs.writeFileSync("public/mainframe-qr-styled.png", qrPngBuffer);
 
-  // 2. LUXURY A5 ACRYLIC STANDEE POSTER
+  // Verify scanability with jsQR
+  const { data, info } = await sharp(qrPngBuffer).raw().ensureAlpha().toBuffer({ resolveWithObject: true });
+  const decoded = jsQR(new Uint8ClampedArray(data), info.width, info.height);
+  if (!decoded || decoded.data !== TARGET_URL) {
+    throw new Error(`QR Verification Failed! Decoded: ${decoded ? decoded.data : "null"}`);
+  }
+  console.log(`✓ Verified scan: ${decoded.data}`);
+
+  // 2. High-End Acrylic Countertop Standee Poster (1200 x 1750 px)
   const posterWidth = 1200;
   const posterHeight = 1750;
-  const qrScale = 0.85; // Scale QR to fit cleanly in poster card
+  const qrScale = 0.88;
   const qrScaledDim = totalDim * qrScale;
   const qrX = (posterWidth - qrScaledDim) / 2;
   const qrY = 460;
@@ -157,49 +153,41 @@ async function run() {
 
   <!-- Acrylic Plaque Outline -->
   <rect width="${posterWidth}" height="${posterHeight}" rx="40" fill="url(#posterBg)" stroke="#E2E8F0" stroke-width="3"/>
-
-  <!-- Architectural Frame Edge -->
   <rect x="36" y="36" width="${posterWidth - 72}" height="${posterHeight - 72}" rx="28" fill="none" stroke="#CBD5E1" stroke-width="1.5" stroke-dasharray="6 8" opacity="0.6"/>
 
   <!-- Top Brand Header -->
   <g transform="translate(80, 130)">
-    <!-- Small Category Eyebrow -->
-    <rect x="0" y="0" width="220" height="34" rx="17" fill="#EFF6FF" stroke="#BFDBFE" stroke-width="1"/>
-    <text x="110" y="23" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13" font-weight="800" letter-spacing="2" fill="#0052FF" text-anchor="middle">MAINFRAME COMPUTERS</text>
+    <rect x="0" y="0" width="230" height="34" rx="17" fill="#EFF6FF" stroke="#BFDBFE" stroke-width="1"/>
+    <text x="115" y="23" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13" font-weight="800" letter-spacing="2" fill="#0052FF" text-anchor="middle">MAINFRAME COMPUTERS</text>
     
     <text x="0" y="95" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="56" font-weight="800" letter-spacing="-1.5" fill="#0F172A">How was your service?</text>
     <text x="0" y="142" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" font-weight="400" fill="#64748B">Your honest review helps fellow laptop &amp; PC users in Kolhapur.</text>
   </g>
 
-  <!-- Trust Badges Row -->
+  <!-- Value Highlights Row -->
   <g transform="translate(80, 330)">
-    <!-- Badge 1 -->
     <rect x="0" y="0" width="280" height="52" rx="26" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.5"/>
     <text x="140" y="33" font-family="sans-serif" font-size="18" font-weight="700" fill="#0F172A" text-anchor="middle">⚡ Under 20 Seconds</text>
 
-    <!-- Badge 2 -->
     <rect x="300" y="0" width="340" height="52" rx="26" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.5"/>
     <text x="470" y="33" font-family="sans-serif" font-size="18" font-weight="700" fill="#0F172A" text-anchor="middle">★ Google Verified Reviews</text>
 
-    <!-- Badge 3 -->
     <rect x="660" y="0" width="300" height="52" rx="26" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.5"/>
     <text x="810" y="33" font-family="sans-serif" font-size="18" font-weight="700" fill="#0F172A" text-anchor="middle">🔒 Direct Owner Care</text>
   </g>
 
-  <!-- The High-End QR Card Frame with Drop Shadow -->
+  <!-- The QR Plaque Container -->
   <g transform="translate(${qrX}, ${qrY})">
     <rect width="${qrScaledDim}" height="${qrScaledDim}" rx="32" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="2" filter="url(#shadowLg)"/>
     
-    <!-- Inlined Scaled QR elements -->
     <g transform="scale(${qrScale})">
-      <!-- Technical Corner Registration Brackets -->
       <g stroke="#94A3B8" stroke-width="3" stroke-linecap="round">
         <path d="M ${cornerOffset} ${cornerOffset + cornerLen} V ${cornerOffset} H ${cornerOffset + cornerLen}"/>
-        <path d="M ${w - cornerOffset - cornerLen} ${cornerOffset} H ${w - cornerOffset} V ${cornerOffset + cornerLen}"/>
-        <path d="M ${cornerOffset} ${h - cornerOffset - cornerLen} V ${h - cornerOffset} H ${cornerOffset + cornerLen}"/>
-        <path d="M ${w - cornerOffset - cornerLen} ${h - cornerOffset} H ${w - cornerOffset} V ${h - cornerOffset - cornerLen}"/>
+        <path d="M ${totalDim - cornerOffset - cornerLen} ${cornerOffset} H ${totalDim - cornerOffset} V ${cornerOffset + cornerLen}"/>
+        <path d="M ${cornerOffset} ${totalDim - cornerOffset - cornerLen} V ${totalDim - cornerOffset} H ${cornerOffset + cornerLen}"/>
+        <path d="M ${totalDim - cornerOffset - cornerLen} ${totalDim - cornerOffset} H ${totalDim - cornerOffset} V ${totalDim - cornerOffset - cornerLen}"/>
       </g>
-      ${buildQRInnerElements(size, moduleSize, padding)}
+      ${buildQRInnerElements(qr, size, moduleSize, padding)}
     </g>
   </g>
 
@@ -211,7 +199,7 @@ async function run() {
     </text>
   </g>
 
-  <!-- Footer Branding -->
+  <!-- Footer Info -->
   <g transform="translate(600, 1490)" text-anchor="middle">
     <text x="0" y="0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="28" font-weight="800" fill="#0F172A">
       MainFrame Computers
@@ -220,21 +208,20 @@ async function run() {
       Rajarampuri, Kolhapur • Sales, Repairs, SSD &amp; RAM Upgrades
     </text>
     <text x="0" y="74" font-family="monospace" font-size="17" font-weight="600" fill="#0052FF">
-      https://mainframecomputers.netlify.app
+      https://mainframe-review-assistant.netlify.app
     </text>
   </g>
 </svg>
   `.trim();
 
   fs.writeFileSync("public/mainframe-standee-card.svg", standeeSvg);
-  await sharp(Buffer.from(standeeSvg)).png().toFile("public/mainframe-standee-card.png");
-  console.log("✓ Created public/mainframe-standee-card.svg & .png (1200x1750)");
+  const standeePngBuffer = await sharp(Buffer.from(standeeSvg)).png().toFile("public/mainframe-standee-card.png");
 
-  // Copy to brain artifacts directory for markdown rendering
+  // Copy to brain artifacts directory
   const artifactDir = "/home/tanish/.gemini/antigravity-cli/brain/c4b00acb-9a76-494b-8a90-866178a87ada";
   fs.copyFileSync("public/mainframe-qr-styled.png", `${artifactDir}/mainframe-qr-styled.png`);
   fs.copyFileSync("public/mainframe-standee-card.png", `${artifactDir}/mainframe-standee-card.png`);
-  console.log("✓ Copied assets to artifact directory");
+  console.log("✓ All assets created and verified in public/ and artifacts!");
 }
 
-run();
+generate().catch(console.error);
